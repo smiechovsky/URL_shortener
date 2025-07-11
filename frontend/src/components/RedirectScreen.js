@@ -1,0 +1,134 @@
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
+
+const API = process.env.REACT_APP_BACKEND_URL + "/api";
+
+export default function RedirectScreen() {
+  const { short } = useParams();
+  const [link, setLink] = useState(null);
+  const [status, setStatus] = useState("loading");
+  const [countdown, setCountdown] = useState(5);
+  const [scanStatus, setScanStatus] = useState("queued");
+  const [rescanMessage, setRescanMessage] = useState("");
+
+  useEffect(() => {
+    setCountdown(5);
+    setStatus("loading");
+    setLink(null);
+    setScanStatus("queued");
+    setRescanMessage("");
+    let eventSource = null;
+
+    axios.get(`${API}/links/${short}`)
+      .then(res => {
+        setLink(res.data);
+        setScanStatus(res.data.virus_status);
+        setStatus("ready");
+        setRescanMessage(res.data.rescan_message || "");
+        if (res.data.virus_status === "safe") {
+          startCountdown(res.data.original_url, res.data.analytics_level);
+        } else if (res.data.virus_status === "queued") {
+          eventSource = startSSEConnection();
+        }
+      })
+      .catch(() => setStatus("error"));
+
+    return () => {
+      if (eventSource) eventSource.close();
+      // czyść interwał jeśli był ustawiony
+      clearInterval(window._redirectInterval);
+    };
+  }, [short]);
+
+  useEffect(() => {
+    if (scanStatus === "safe" && link) {
+      startCountdown(link.original_url, link.analytics_level);
+    }
+  }, [scanStatus, link]);
+
+  const startCountdown = (url, analytics_level) => {
+    setCountdown(5);
+    clearInterval(window._redirectInterval);
+    window._redirectInterval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev === 1) {
+          clearInterval(window._redirectInterval);
+          sendAnalytics(analytics_level);
+          window.location.href = url;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const startSSEConnection = () => {
+    const eventSource = new EventSource(`${API}/links/sse/${short}`);
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'status_update') {
+        setScanStatus(data.status);
+        setRescanMessage(data.rescan_message || "");
+        if (data.status === 'safe') {
+          eventSource.close();
+          if (link) {
+            startCountdown(link.original_url, link.analytics_level);
+          }
+        } else if (data.status === 'blocked') {
+          eventSource.close();
+        }
+      }
+    };
+    eventSource.onerror = (error) => {
+      console.error('SSE error:', error);
+      eventSource.close();
+    };
+    return eventSource;
+  };
+
+  const sendAnalytics = (analytics_level) => {
+    axios.post(`${API}/analytics/${short}`, {
+      analytics_level: analytics_level
+    });
+  };
+  
+
+  if (status === "loading") return <div>Loading...</div>;
+  if (status === "error") return <div>Link not found.</div>;
+
+  return (
+    <div style={{ maxWidth: 500, margin: "2rem auto" }}>
+      <h2>Redirecting...</h2>
+      <div>
+        <b>Destination:</b> {link.original_url}
+      </div>
+      <div>
+        <b>Virus status:</b> {scanStatus}
+      </div>
+      {scanStatus === "safe" && (
+        <div>
+          Redirecting in {countdown} seconds...
+        </div>
+      )}
+      {scanStatus === "blocked" && (
+        <div>
+          <div style={{ color: "red" }}>This link is marked as dangerous!</div>
+          <button onClick={() => window.location.href = link.original_url}>
+            I accept the risk, go anyway
+          </button>
+        </div>
+      )}
+      {scanStatus === "queued" && (
+        <div>
+          {rescanMessage && (
+            <div style={{ color: '#b8860b', marginBottom: 8 }}>{rescanMessage}</div>
+          )}
+          <div>Waiting for VirusTotal scan...</div>
+          <div style={{ fontSize: '0.9em', color: '#666' }}>
+            This may take up to 30 seconds
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
