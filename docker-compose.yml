@@ -3,14 +3,13 @@ services:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_USER: shortener
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: shortenerdb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   backend:
     build: ./backend
@@ -34,7 +33,7 @@ services:
     restart: always
     env_file: .env
     environment:
-      - REACT_APP_BACKEND_URL=http://localhost:4000
+      - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
     ports:
       - "3000:3000"
     depends_on:

@@ -15,8 +15,6 @@ const app = express();
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 
-connectDB();
-
 app.use("/api/auth", authRoutes);
 app.use("/api/links", linkRoutes);
 app.use("/api/analytics", analyticsRoutes);
@@ -26,8 +24,13 @@ app.get("/", (req, res) => res.send("URL Shortener API running!"));
 
 app.use(errorHandler);
 
-app.listen(4000, () => {
-  console.log("Backend running on port 4000");
-  // Uruchom procesor skanów wirusów
-  startVirusScanProcessor();
-});
+// Poprawiony asynchroniczny start:
+const startServer = async () => {
+  await connectDB(); // tu masz pewność, że tabele już są!
+  app.listen(4000, () => {
+    console.log("Backend running on port 4000");
+    startVirusScanProcessor(); // teraz już bezpiecznie!
+  });
+};
+
+startServer();
