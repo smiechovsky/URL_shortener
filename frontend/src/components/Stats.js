@@ -23,7 +23,8 @@ export default function Stats() {
       <div>Links created: {stats.last_24h.total_links}</div>
       <div>Scans: {stats.last_24h.total_scans}</div>
       <div>Blocked links: {stats.last_24h.total_blocked}</div>
-      <div>Queued links: {stats.queued_links}</div>
+      <div>Awaiting submission to scan: {stats.pending_links}</div>
+      <div>Awaiting scan verdict: {stats.scanning_links}</div>
       <hr style={{ margin: '2em 0' }} />
       <h2>Global stats</h2>
       <div>Total links: {stats.total_links}</div>

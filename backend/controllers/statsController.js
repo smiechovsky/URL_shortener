@@ -5,6 +5,7 @@ export const getStats = async (req, res, next) => {
     const totalLinks = await pool.query("SELECT COUNT(*) FROM links");
     const totalScans = await pool.query("SELECT COUNT(*) FROM virus_scans;");
     const totalBlocked = await pool.query("SELECT COUNT(*) FROM links WHERE virus_status='blocked'");
+    const totalPending = await pool.query("SELECT COUNT(*) FROM links WHERE virus_status='pending'");
     const totalQueued = await pool.query("SELECT COUNT(*) FROM links WHERE virus_status='queued'");
     const now = new Date();
     const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -16,7 +17,8 @@ export const getStats = async (req, res, next) => {
       total_links: totalLinks.rows[0].count,
       total_scans: totalScans.rows[0].count,
       total_blocked: totalBlocked.rows[0].count,
-      queued_links: totalQueued.rows[0].count,
+      pending_links: totalPending.rows[0].count,
+      scanning_links: totalQueued.rows[0].count,
       last_24h: {
         total_links: totalLinks24h.rows[0].count,
         total_scans: totalScans24h.rows[0].count,

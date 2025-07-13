@@ -11,18 +11,26 @@ export const createLink = async (req, res, next) => {
   const short_code = generateCode(6);
   const analytics_code = user_id ? null : generateCode(12);
   try {
-    // Najpierw utwórz link ze statusem queued
+    // 1. Utwórz link ze statusem 'pending'
     const link = await pool.query(
       `INSERT INTO links (user_id, original_url, short_code, analytics_code, analytics_level, virus_status, last_virus_scan)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())
        RETURNING *`,
-      [user_id, original_url, short_code, analytics_code, analytics_level, "queued"]
+      [user_id, original_url, short_code, analytics_code, analytics_level, "pending"]
     );
-    
-    // Następnie uruchom skanowanie VirusTotal z link_id
-    await checkVirusTotal(original_url, link.rows[0].id);
-    
-    res.json(link.rows[0]);
+    // 2. NIE wywołuj checkVirusTotal tutaj! (zrobi to osobny serwis)
+
+    // 3. Zwróć tylko niezbędne dane (bez user_id, last_virus_scan itp.)
+    const l = link.rows[0];
+    res.json({
+      id: l.id,
+      original_url: l.original_url,
+      short_code: l.short_code,
+      analytics_code: l.analytics_code,
+      analytics_level: l.analytics_level,
+      virus_status: l.virus_status,
+      created_at: l.created_at
+    });
   } catch (err) {
     next(err);
   }

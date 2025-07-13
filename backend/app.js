@@ -8,6 +8,7 @@ import analyticsRoutes from "./routes/analytics.js";
 import statsRoutes from "./routes/stats.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { startVirusScanProcessor } from "./services/virusScanProcessor.js";
+import { startVirusScanSubmitter } from "./services/virusScanSubmitter.js";
 
 dotenv.config();
 
@@ -44,13 +45,14 @@ app.get("/", (req, res) => res.send("URL Shortener API running!"));
 
 app.use(errorHandler);
 
-// Poprawiony asynchroniczny start:
+// Wait for database connection before starting services
 const startServer = async () => {
-  await connectDB(); // tu masz pewność, że tabele już są!
+  await connectDB(); 
   const PORT = process.env.BACKEND_PORT || 4000;
   app.listen(PORT, () => {
     console.log(`Backend running on port ${PORT}`);
-    startVirusScanProcessor(); // teraz już bezpiecznie!
+    startVirusScanSubmitter();
+    startVirusScanProcessor();
   });
 };
 
