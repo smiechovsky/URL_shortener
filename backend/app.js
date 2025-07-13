@@ -12,7 +12,27 @@ import { startVirusScanProcessor } from "./services/virusScanProcessor.js";
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+
+// CORS configuration for multiple environments
+const allowedOrigins = [
+  process.env.RAILWAY_URL,
+  process.env.FRONTEND_URL,
+].filter(Boolean); // Remove undefined values
+
+app.use(cors({ 
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true 
+}));
+
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
@@ -27,8 +47,9 @@ app.use(errorHandler);
 // Poprawiony asynchroniczny start:
 const startServer = async () => {
   await connectDB(); // tu masz pewność, że tabele już są!
-  app.listen(4000, () => {
-    console.log("Backend running on port 4000");
+  const PORT = process.env.BACKEND_PORT || 4000;
+  app.listen(PORT, () => {
+    console.log(`Backend running on port ${PORT}`);
     startVirusScanProcessor(); // teraz już bezpiecznie!
   });
 };
