@@ -28,7 +28,7 @@ export default function RedirectScreen() {
         setRescanMessage(res.data.rescan_message || "");
         if (res.data.virus_status === "safe") {
           startCountdown(res.data.original_url, res.data.analytics_level);
-        } else if (res.data.virus_status === "queued") {
+        } else if (res.data.virus_status === "queued" || res.data.virus_status === "pending") {
           eventSource = startSSEConnection();
         }
       })
@@ -105,12 +105,12 @@ export default function RedirectScreen() {
       <div>
         <b>Virus status:</b> {scanStatus}
       </div>
-      {scanStatus === "safe" && (
+      {(scanStatus === "safe") && (
         <div>
           Redirecting in {countdown} seconds...
         </div>
       )}
-      {scanStatus === "blocked" && (
+      {(scanStatus === "blocked") && (
         <div>
           <div style={{ color: "red" }}>This link is marked as dangerous!</div>
           <button onClick={() => window.location.href = link.original_url}>
@@ -118,7 +118,7 @@ export default function RedirectScreen() {
           </button>
         </div>
       )}
-      {scanStatus === "queued" && (
+      {(scanStatus === "queued" || scanStatus === "pending") && (
         <div>
           {rescanMessage && (
             <div style={{ color: '#b8860b', marginBottom: 8 }}>{rescanMessage}</div>

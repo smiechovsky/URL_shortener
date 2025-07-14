@@ -17,7 +17,6 @@ router.get("/analytics/:code", getAnalyticsLink);
 // SSE endpoint for virus scan status updates (must be before /:short routes)
 router.get("/sse/:short", (req, res) => {
   const { short } = req.params;
-  
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -25,11 +24,9 @@ router.get("/sse/:short", (req, res) => {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Cache-Control'
   });
-
-  // Send initial connection message
   res.write(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
 
-  // Check status every 2 seconds
+  let lastStatus = null;
   const interval = setInterval(async () => {
     try {
       const { pool } = await import("../utils/db.js");
@@ -37,13 +34,14 @@ router.get("/sse/:short", (req, res) => {
         "SELECT virus_status FROM links WHERE short_code = $1",
         [short]
       );
-      
       if (result.rows.length > 0) {
         const status = result.rows[0].virus_status;
-        res.write(`data: ${JSON.stringify({ type: 'status_update', status })}\n\n`);
-        
-        // Stop checking if status is no longer queued
-        if (status !== 'queued') {
+        if (status !== lastStatus) {
+          res.write(`data: ${JSON.stringify({ type: 'status_update', status })}\n\n`);
+          lastStatus = status;
+        }
+        // Zakończ SSE jeśli status to safe lub blocked
+        if (status === 'safe' || status === 'blocked') {
           clearInterval(interval);
           res.end();
         }
@@ -54,7 +52,6 @@ router.get("/sse/:short", (req, res) => {
     }
   }, 2000);
 
-  // Clean up on client disconnect
   req.on('close', () => {
     clearInterval(interval);
   });

@@ -41,9 +41,7 @@ export const getLink = async (req, res, next) => {
   try {
     const linkResult = await pool.query("SELECT * FROM links WHERE short_code=$1", [short]);
     if (!linkResult.rows.length) {
-      const err = new Error("Not found");
-      err.status = 404;
-      return next(err);
+      return res.status(404).json({ error: "Link not found" });
     }
     const link = linkResult.rows[0];
 
@@ -74,9 +72,7 @@ export const redirectLink = async (req, res, next) => {
       short,
     ]);
     if (!link.rows.length) {
-      const err = new Error("Not found");
-      err.status = 404;
-      return next(err);
+      return res.status(404).json({ error: "Link not found" });
     }
     // Zwróć dane do ekranu pośredniego (frontend sam przekieruje po kilku sekundach)
     res.json(link.rows[0]);
@@ -105,9 +101,7 @@ export const getAnalyticsLink = async (req, res, next) => {
       [code]
     );
     if (!link.rows.length) {
-      const err = new Error("Not found");
-      err.status = 404;
-      return next(err);
+      return res.status(404).json({ error: "Link not found" });
     }
     res.json(link.rows[0]);
   } catch (err) {
