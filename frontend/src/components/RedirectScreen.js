@@ -13,6 +13,7 @@ export default function RedirectScreen() {
   const [rescanMessage, setRescanMessage] = useState("");
   const visitedSent = useRef(false);
   const redirectedSent = useRef(false);
+  const [countryName, setCountryName] = useState("Unknown");
 
   useEffect(() => {
     setCountdown(5);
@@ -59,6 +60,14 @@ export default function RedirectScreen() {
     }
   }, [scanStatus, link]);
 
+  // Fetch country_name from ipapi.co
+  useEffect(() => {
+    fetch('https://ipapi.co/json/')
+      .then(res => res.json())
+      .then(data => setCountryName(data.country_name || "Unknown"))
+      .catch(() => setCountryName("Unknown"));
+  }, [short]);
+
   const startCountdown = (url, analytics_level) => {
     setCountdown(5);
     clearInterval(window._redirectInterval);
@@ -104,7 +113,8 @@ export default function RedirectScreen() {
   const sendAnalytics = (analytics_level, action = "visited") => {
     axios.post(`${API}/analytics/${short}`, {
       analytics_level: analytics_level,
-      action: action
+      action: action,
+      country_name: countryName
     });
   };
 

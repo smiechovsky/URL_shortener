@@ -11,14 +11,14 @@ function getDeviceType(agent) {
 
 export const addAnalytics = async (req, res, next) => {
   const { short } = req.params;
-  const { analytics_level, action } = req.body;
+  const { analytics_level, action, country_name } = req.body;
   const agent = useragent.parse(req.headers["user-agent"]);
   const device_type = getDeviceType(agent);
   const os = agent.os.toString();
   const browser = agent.toAgent();
   const user_agent = req.headers["user-agent"];
   const language = req.headers["accept-language"] || null;
-  let country = "Unknown";
+  let country = country_name || "Unknown";
   let ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
   if (ip && ip.includes(",")) ip = ip.split(",")[0].trim();
   if (ip && ip.startsWith("::ffff:")) ip = ip.replace("::ffff:", "");
@@ -31,7 +31,8 @@ export const addAnalytics = async (req, res, next) => {
     return res.status(404).json({ error: "Link not found" });
   }
 
-  if (analytics_level === "standard" || analytics_level === "advanced") {
+  // Jeśli nie mamy country_name z frontu, próbuj pobrać z ipapi.co (fallback)
+  if ((analytics_level === "standard" || analytics_level === "advanced") && country === "Unknown") {
     try {
       const geo = await fetch(`https://ipapi.co/${ip}/json/`).then(res => res.json());
       console.log("[ANALYTICS] Geo response:", geo);
