@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 
@@ -11,6 +11,8 @@ export default function RedirectScreen() {
   const [countdown, setCountdown] = useState(5);
   const [scanStatus, setScanStatus] = useState("queued");
   const [rescanMessage, setRescanMessage] = useState("");
+  const visitedSent = useRef(false);
+  const redirectedSent = useRef(false);
 
   useEffect(() => {
     setCountdown(5);
@@ -18,6 +20,8 @@ export default function RedirectScreen() {
     setLink(null);
     setScanStatus("queued");
     setRescanMessage("");
+    visitedSent.current = false;
+    redirectedSent.current = false;
     let eventSource = null;
 
     axios.get(`${API}/links/${short}`)
@@ -41,6 +45,14 @@ export default function RedirectScreen() {
     };
   }, [short]);
 
+  // Wywołaj analitykę natychmiast po załadowaniu linku (tylko raz)
+  useEffect(() => {
+    if (status === "ready" && link && !visitedSent.current) {
+      sendAnalytics(link.analytics_level, "visited");
+      visitedSent.current = true;
+    }
+  }, [status, link]);
+
   useEffect(() => {
     if (scanStatus === "safe" && link) {
       startCountdown(link.original_url, link.analytics_level);
@@ -54,7 +66,10 @@ export default function RedirectScreen() {
       setCountdown(prev => {
         if (prev === 1) {
           clearInterval(window._redirectInterval);
-          sendAnalytics(analytics_level);
+          if (!redirectedSent.current) {
+            sendAnalytics(analytics_level, "redirected");
+            redirectedSent.current = true;
+          }
           window.location.href = url;
         }
         return prev - 1;
@@ -86,10 +101,20 @@ export default function RedirectScreen() {
     return eventSource;
   };
 
-  const sendAnalytics = (analytics_level) => {
+  const sendAnalytics = (analytics_level, action = "visited") => {
     axios.post(`${API}/analytics/${short}`, {
-      analytics_level: analytics_level
+      analytics_level: analytics_level,
+      action: action
     });
+  };
+
+  // Obsługa kliknięcia "I accept the risk, go anyway"
+  const handleAcceptRisk = () => {
+    if (!redirectedSent.current && link) {
+      sendAnalytics(link.analytics_level, "accepted_risk");
+      redirectedSent.current = true;
+    }
+    window.location.href = link.original_url;
   };
   
 
@@ -113,7 +138,7 @@ export default function RedirectScreen() {
       {(scanStatus === "blocked") && (
         <div>
           <div style={{ color: "red" }}>This link is marked as dangerous!</div>
-          <button onClick={() => window.location.href = link.original_url}>
+          <button onClick={handleAcceptRisk}>
             I accept the risk, go anyway
           </button>
         </div>

@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS links (
 CREATE TABLE IF NOT EXISTS analytics (
     id SERIAL PRIMARY KEY,
     link_id INTEGER REFERENCES links(id) ON DELETE CASCADE,
-    timestamp TIMESTAMP DEFAULT NOW(),
+    visited_at TIMESTAMP,
+    redirected_at TIMESTAMP,
+    accepted_risk_at TIMESTAMP,
     ip VARCHAR(45),
     country VARCHAR(100),
     device_type VARCHAR(50),
