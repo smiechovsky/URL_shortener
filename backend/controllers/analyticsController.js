@@ -22,6 +22,7 @@ export const addAnalytics = async (req, res, next) => {
   let ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
   if (ip && ip.includes(",")) ip = ip.split(",")[0].trim();
   if (ip && ip.startsWith("::ffff:")) ip = ip.replace("::ffff:", "");
+  console.log("[ANALYTICS] IP for analytics:", ip);
 
   // Get linkId from short_code
   const linkRes = await pool.query("SELECT id FROM links WHERE short_code = $1", [short]);
@@ -33,8 +34,12 @@ export const addAnalytics = async (req, res, next) => {
   if (analytics_level === "standard" || analytics_level === "advanced") {
     try {
       const geo = await fetch(`https://ipapi.co/${ip}/json/`).then(res => res.json());
+      console.log("[ANALYTICS] Geo response:", geo);
       country = geo.country_name || "Unknown";
-    } catch {}
+      console.log("[ANALYTICS] Country to save:", country);
+    } catch (e) {
+      console.log("[ANALYTICS] Error fetching geo:", e);
+    }
   }
 
   // Określ, którą kolumnę timestamp aktualizować
