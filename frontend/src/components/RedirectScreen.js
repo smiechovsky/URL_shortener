@@ -48,11 +48,11 @@ export default function RedirectScreen() {
 
   // Wywołaj analitykę natychmiast po załadowaniu linku (tylko raz)
   useEffect(() => {
-    if (status === "ready" && link && !visitedSent.current) {
+    if (status === "ready" && link && !visitedSent.current && countryName !== "Unknown") {
       sendAnalytics(link.analytics_level, "visited");
       visitedSent.current = true;
     }
-  }, [status, link]);
+  }, [status, link, countryName]);
 
   useEffect(() => {
     if (scanStatus === "safe" && link) {
