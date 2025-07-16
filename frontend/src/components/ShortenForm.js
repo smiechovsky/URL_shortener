@@ -51,7 +51,7 @@ export default function ShortenForm() {
               </div>
               {result.analytics_code && (
                 <div>
-                  Analytics: <a href={`${API}/links/analytics/${result.analytics_code}`}>{result.analytics_code}</a>
+                  Analytics: <a href={`/a/${result.analytics_code}`}>{window.location.origin}/a/{result.analytics_code}</a>
                 </div>
               )}
             </div>

@@ -31,25 +31,13 @@ export const addAnalytics = async (req, res, next) => {
     return res.status(404).json({ error: "Link not found" });
   }
 
-  // Jeśli nie mamy country_name z frontu, próbuj pobrać z ipapi.co (fallback)
-  if ((analytics_level === "standard" || analytics_level === "advanced") && country === "Unknown") {
-    try {
-      const geo = await fetch(`https://ipapi.co/${ip}/json/`).then(res => res.json());
-      console.log("[ANALYTICS] Geo response:", geo);
-      country = geo.country_name || "Unknown";
-      console.log("[ANALYTICS] Country to save:", country);
-    } catch (e) {
-      console.log("[ANALYTICS] Error fetching geo:", e);
-    }
-  }
-
   // Określ, którą kolumnę timestamp aktualizować
   let column = "visited_at";
   if (action === "redirected") column = "redirected_at";
   if (action === "accepted_risk") column = "accepted_risk_at";
 
-  // Szukaj istniejącej sesji (link_id, ip, user_agent, ostatnie 10 min)
-  const since = new Date(Date.now() - 2.5 * 60 * 1000); // pierwsza zmienna to czas w min, jak ulamkowa to rodzielona kropka
+  // Szukaj istniejącej sesji (link_id, ip, user_agent, ostatnie 90 s)
+  const since = new Date(Date.now() - 1.5 * 60 * 1000); // pierwsza zmienna to czas w min, jak ulamkowa to rodzielona kropka
   const existing = await pool.query(
     `SELECT id FROM analytics WHERE link_id=$1 AND ip=$2 AND user_agent=$3 AND visited_at >= $4`,
     [linkId, ip, user_agent, since]
