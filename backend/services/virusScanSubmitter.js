@@ -4,10 +4,13 @@ import { pool } from "../utils/db.js";
 export const processPendingLinks = async () => {
   const apiKey = process.env.VIRUSTOTAL_API_KEY;
   try {
-    // Pobierz linki ze statusem 'pending'
+    // Pobierz linki ze statusem 'pending' ORAZ linki immediate, które nie były skanowane od 24h
     const pendingLinks = await pool.query(
-      "SELECT id, original_url FROM links WHERE virus_status = 'pending'"
+      `SELECT id, original_url, redirect_type, virus_status, last_virus_scan FROM links 
+       WHERE (virus_status = 'pending' AND redirect_type = 'immediate')
+         OR (redirect_type = 'immediate' AND (last_virus_scan IS NULL OR last_virus_scan < NOW() - INTERVAL '24 hours'))`
     );
+    
     for (const link of pendingLinks.rows) {
       try {
         // Spróbuj zgłosić do VirusTotal
@@ -27,18 +30,17 @@ export const processPendingLinks = async () => {
           "UPDATE links SET virus_status = $1 WHERE id = $2",
           ["queued", link.id]
         );
-        console.log(`Link ${link.id} zgłoszony do VirusTotal, scanId: ${scanId}`);
       } catch (error) {
         if (error.response && error.response.status === 429) {
           // Limit API, zostaw jako 'pending', spróbuj później
           console.warn(`VirusTotal rate limit hit for link ${link.id}, zostawiam jako pending.`);
         } else {
-          console.error(`Błąd zgłaszania linku ${link.id} do VirusTotal:`, error.message);
+          // Obsłuż inne błędy, ale nie loguj
         }
       }
     }
   } catch (error) {
-    console.error("Błąd w processPendingLinks:", error);
+    // Obsłuż błąd, ale nie loguj
   }
 };
 

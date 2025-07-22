@@ -6,30 +6,34 @@ const generateCode = (len = 6) =>
   crypto.randomBytes(len).toString("base64url").slice(0, len);
 
 export const createLink = async (req, res, next) => {
-  const { original_url, analytics_level = "minimal" } = req.body;
+  const { original_url, analytics_level = "minimal", redirect_type = "immediate", delay_seconds = null } = req.body;
   const user_id = req.user?.id || null;
   const short_code = generateCode(6);
   const analytics_code = user_id ? null : generateCode(12);
   try {
-    // 1. Utwórz link ze statusem 'pending'
-    const link = await pool.query(
-      `INSERT INTO links (user_id, original_url, short_code, analytics_code, analytics_level, virus_status, last_virus_scan)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
-       RETURNING *`,
-      [user_id, original_url, short_code, analytics_code, analytics_level, "pending"]
-    );
-    // 2. NIE wywołuj checkVirusTotal tutaj! (zrobi to osobny serwis)
-
-    // 3. Zwróć tylko niezbędne dane (bez user_id, last_virus_scan itp.)
+    const sql = `INSERT INTO links (user_id, original_url, short_code, analytics_code, analytics_level, virus_status, redirect_type, delay_seconds)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`;
+    const params = [user_id, original_url, short_code, analytics_code, analytics_level, "pending", redirect_type, delay_seconds];
+    const link = await pool.query(sql, params);
     const l = link.rows[0];
+    
+    // Pierwszy skan dla linków delayed
+    if (redirect_type === "delayed") {
+      await checkVirusTotal(original_url, l.id);
+      await pool.query("UPDATE links SET virus_status = $1 WHERE id = $2", ["queued", l.id]);
+    }
+    
     res.json({
       id: l.id,
       original_url: l.original_url,
       short_code: l.short_code,
       analytics_code: l.analytics_code,
       analytics_level: l.analytics_level,
-      virus_status: l.virus_status,
-      created_at: l.created_at
+      virus_status: redirect_type === "delayed" ? "queued" : l.virus_status,
+      created_at: l.created_at,
+      redirect_type: l.redirect_type,
+      delay_seconds: l.delay_seconds
     });
   } catch (err) {
     next(err);
@@ -45,21 +49,24 @@ export const getLink = async (req, res, next) => {
     }
     const link = linkResult.rows[0];
 
-    // Sprawdź, czy minęło 24h od ostatniego skanowania
-    if (link.last_virus_scan && new Date(link.last_virus_scan) < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
-      // Uruchom ponownie skanowanie (nowy wpis w virus_scans)
+    // Skanowanie na żądanie tylko dla delayed
+    if (link.redirect_type === 'delayed' && link.last_virus_scan && new Date(link.last_virus_scan) < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
       await checkVirusTotal(link.original_url, link.id);
-      // Ustaw status na queued (nie zmieniaj starego wpisu w virus_scans)
       await pool.query("UPDATE links SET virus_status = $1 WHERE id = $2", ["queued", link.id]);
-      // Zwróć informację o reskanowaniu
       return res.json({
         ...link,
         virus_status: "queued",
-        rescan_message: "Minęło 24h od ostatniego skanowania, czekam na reskanowanie VirusTotal."
+        rescan_message: "Minęło 24h od ostatniego skanowania, czekam na reskanowanie VirusTotal.",
+        redirect_type: link.redirect_type,
+        delay_seconds: link.delay_seconds
       });
     }
 
-    res.json(link);
+    res.json({
+      ...link,
+      redirect_type: link.redirect_type,
+      delay_seconds: link.delay_seconds
+    });
   } catch (err) {
     next(err);
   }
@@ -74,8 +81,12 @@ export const redirectLink = async (req, res, next) => {
     if (!link.rows.length) {
       return res.status(404).json({ error: "Link not found" });
     }
-    // Zwróć dane do ekranu pośredniego (frontend sam przekieruje po kilku sekundach)
-    res.json(link.rows[0]);
+    // Nie wywołuj checkVirusTotal tutaj, logika tylko w getLink
+    res.json({
+      ...link.rows[0],
+      redirect_type: link.rows[0].redirect_type,
+      delay_seconds: link.rows[0].delay_seconds
+    });
   } catch (err) {
     next(err);
   }

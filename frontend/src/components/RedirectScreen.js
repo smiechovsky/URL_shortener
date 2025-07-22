@@ -31,8 +31,18 @@ export default function RedirectScreen() {
         setScanStatus(res.data.virus_status);
         setStatus("ready");
         setRescanMessage(res.data.rescan_message || "");
+        // Nowa logika przekierowania
         if (res.data.virus_status === "safe") {
-          startCountdown(res.data.original_url, res.data.analytics_level);
+          if (res.data.redirect_type === "delayed") {
+            startCountdown(res.data.original_url, res.data.analytics_level, res.data.delay_seconds);
+          } else {
+            // immediate: przekieruj natychmiast
+            if (!redirectedSent.current) {
+              sendAnalytics(res.data.analytics_level, "redirected");
+              redirectedSent.current = true;
+            }
+            window.location.href = res.data.original_url;
+          }
         } else if (res.data.virus_status === "queued" || res.data.virus_status === "pending") {
           eventSource = startSSEConnection();
         }
@@ -56,7 +66,16 @@ export default function RedirectScreen() {
 
   useEffect(() => {
     if (scanStatus === "safe" && link) {
-      startCountdown(link.original_url, link.analytics_level);
+      if (link.redirect_type === "delayed") {
+        startCountdown(link.original_url, link.analytics_level, link.delay_seconds);
+      } else {
+        // immediate: przekieruj natychmiast
+        if (!redirectedSent.current) {
+          sendAnalytics(link.analytics_level, "redirected");
+          redirectedSent.current = true;
+        }
+        window.location.href = link.original_url;
+      }
     }
   }, [scanStatus, link]);
 
@@ -68,8 +87,8 @@ export default function RedirectScreen() {
       .catch(() => setCountryName("Unknown"));
   }, [short]);
 
-  const startCountdown = (url, analytics_level) => {
-    setCountdown(5);
+  const startCountdown = (url, analytics_level, delay = 5) => {
+    setCountdown(delay || 5);
     clearInterval(window._redirectInterval);
     window._redirectInterval = setInterval(() => {
       setCountdown(prev => {
@@ -140,7 +159,7 @@ export default function RedirectScreen() {
       <div>
         <b>Virus status:</b> {scanStatus}
       </div>
-      {(scanStatus === "safe") && (
+      {(scanStatus === "safe") && link && link.redirect_type === "delayed" && (
         <div>
           Redirecting in {countdown} seconds...
         </div>

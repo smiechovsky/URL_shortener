@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS links (
     analytics_level VARCHAR(20) NOT NULL DEFAULT 'minimal',
     virus_status VARCHAR(20) NOT NULL DEFAULT 'pending',
     last_virus_scan TIMESTAMP,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    redirect_type VARCHAR(20) NOT NULL DEFAULT 'immediate',
+    delay_seconds INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS analytics (

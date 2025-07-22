@@ -7,6 +7,8 @@ export default function ShortenForm() {
   const [url, setUrl] = useState("");
   const [level, setLevel] = useState("minimal");
   const [result, setResult] = useState(null);
+  const [redirectType, setRedirectType] = useState("immediate"); // 'immediate' or 'delayed'
+  const [delaySeconds, setDelaySeconds] = useState(3); // 3-20 seconds
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,6 +17,8 @@ export default function ShortenForm() {
       const res = await axios.post(`${API}/links`, {
         original_url: url,
         analytics_level: level,
+        redirect_type: redirectType,
+        delay_seconds: redirectType === "delayed" ? delaySeconds : null,
       });
       setResult(res.data);
     } catch (err) {
@@ -39,6 +43,28 @@ export default function ShortenForm() {
           <option value="minimal">Minimal (geo, device)</option>
           <option value="advanced">Advanced (IP, user agent)</option>
         </select>
+        <select
+          value={redirectType}
+          onChange={e => setRedirectType(e.target.value)}
+          style={{ width: "100%", marginBottom: 8 }}
+        >
+          <option value="immediate">Immediate redirect</option>
+          <option value="delayed">Delayed redirect</option>
+        </select>
+        {redirectType === "delayed" && (
+          <div style={{ marginBottom: 8 }}>
+            <label htmlFor="delayRange">Delay (seconds): {delaySeconds}</label>
+            <input
+              id="delayRange"
+              type="range"
+              min={3}
+              max={20}
+              value={delaySeconds}
+              onChange={e => setDelaySeconds(Number(e.target.value))}
+              style={{ width: "100%" }}
+            />
+          </div>
+        )}
         <button type="submit" style={{ width: "100%" }}>Shorten</button>
       </form>
       {result && (
@@ -54,6 +80,9 @@ export default function ShortenForm() {
                   Analytics: <a href={`/a/${result.analytics_code}`}>{window.location.origin}/a/{result.analytics_code}</a>
                 </div>
               )}
+              <div style={{ marginTop: 8 }}>
+                Redirect type: {result.redirect_type === "delayed" ? `Delayed (${result.delay_seconds} seconds)` : "Immediate"}
+              </div>
             </div>
           )}
         </div>
