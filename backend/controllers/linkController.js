@@ -18,7 +18,7 @@ export const createLink = async (req, res, next) => {
     const link = await pool.query(sql, params);
     const l = link.rows[0];
     
-    // Pierwszy skan dla linków delayed
+    // Initial scan for delayed links
     if (redirect_type === "delayed") {
       await checkVirusTotal(original_url, l.id);
       await pool.query("UPDATE links SET virus_status = $1 WHERE id = $2", ["queued", l.id]);
@@ -49,14 +49,14 @@ export const getLink = async (req, res, next) => {
     }
     const link = linkResult.rows[0];
 
-    // Skanowanie na żądanie tylko dla delayed
+    // On-demand scanning only for delayed links
     if (link.redirect_type === 'delayed' && link.last_virus_scan && new Date(link.last_virus_scan) < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
       await checkVirusTotal(link.original_url, link.id);
       await pool.query("UPDATE links SET virus_status = $1 WHERE id = $2", ["queued", link.id]);
       return res.json({
         ...link,
         virus_status: "queued",
-        rescan_message: "Minęło 24h od ostatniego skanowania, czekam na reskanowanie VirusTotal.",
+        rescan_message: "24h passed since the last scan; waiting for VirusTotal rescan.",
         redirect_type: link.redirect_type,
         delay_seconds: link.delay_seconds
       });
@@ -81,7 +81,7 @@ export const redirectLink = async (req, res, next) => {
     if (!link.rows.length) {
       return res.status(404).json({ error: "Link not found" });
     }
-    // Nie wywołuj checkVirusTotal tutaj, logika tylko w getLink
+    // Do not call checkVirusTotal here; logic is only in getLink
     res.json({
       ...link.rows[0],
       redirect_type: link.rows[0].redirect_type,

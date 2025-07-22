@@ -31,26 +31,26 @@ export const addAnalytics = async (req, res, next) => {
     return res.status(404).json({ error: "Link not found" });
   }
 
-  // Określ, którą kolumnę timestamp aktualizować
+  // Determine which timestamp column to update
   let column = "visited_at";
   if (action === "redirected") column = "redirected_at";
   if (action === "accepted_risk") column = "accepted_risk_at";
 
-  // Szukaj istniejącej sesji (link_id, ip, user_agent, ostatnie 90 s)
-  const since = new Date(Date.now() - 1.5 * 60 * 1000); // pierwsza zmienna to czas w min, jak ulamkowa to rodzielona kropka
+  // Look for an existing session (link_id, ip, user_agent, last 90 s)
+  const since = new Date(Date.now() - 1.5 * 60 * 1000); // first variable is minutes; use a dot for fractions
   const existing = await pool.query(
     `SELECT id FROM analytics WHERE link_id=$1 AND ip=$2 AND user_agent=$3 AND visited_at >= $4`,
     [linkId, ip, user_agent, since]
   );
 
   if (existing.rows.length > 0) {
-    // Aktualizuj odpowiednią kolumnę timestamp
+    // Update the relevant timestamp column
     await pool.query(
       `UPDATE analytics SET ${column}=NOW() WHERE id=$1`,
       [existing.rows[0].id]
     );
   } else {
-    // Twórz nowy rekord z odpowiednim polem czasowym
+    // Create a new record with the proper timestamp field
     const fields = {
       visited_at: null,
       redirected_at: null,

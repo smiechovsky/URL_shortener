@@ -5,14 +5,14 @@ export const processQueuedScans = async () => {
   const apiKey = process.env.VIRUSTOTAL_API_KEY;
   
   try {
-    // Pobierz wszystkie skany ze statusem queued
+    // Fetch all scans with status queued
     const queuedScans = await pool.query(
       "SELECT id, link_id, scan_id FROM virus_scans WHERE status = 'queued'"
     );
 
     for (const scan of queuedScans.rows) {
       try {
-        // Sprawdź status skanu w VirusTotal
+        // Check scan status in VirusTotal
         const result = await axios.get(
           `https://www.virustotal.com/api/v3/analyses/${scan.scan_id}`,
           { headers: { "x-apikey": apiKey } }
@@ -30,13 +30,13 @@ export const processQueuedScans = async () => {
           }
         }
 
-        // Aktualizuj status w bazie
+        // Update status in virus_scans
         await pool.query(
           "UPDATE virus_scans SET status = $1 WHERE id = $2",
           [verdict, scan.id]
         );
 
-        // Aktualizuj status w tabeli links
+        // Update status in links table
         await pool.query(
           "UPDATE links SET virus_status = $1, last_virus_scan = NOW() WHERE id = $2",
           [verdict, scan.link_id]
@@ -52,11 +52,11 @@ export const processQueuedScans = async () => {
   }
 };
 
-// Funkcja do uruchomienia procesora w pętli
+// Function to run the processor in a loop
 export const startVirusScanProcessor = () => {
   console.log("Starting virus scan processor...");
   
-  // Uruchom pierwszy raz
+  // Run once at start
   processQueuedScans();
   
   // 1000 = 1s

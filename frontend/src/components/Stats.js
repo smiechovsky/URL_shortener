@@ -10,9 +10,9 @@ export default function Stats() {
     const fetchStats = () => {
       axios.get(`${API}/stats`).then(res => setStats(res.data));
     };
-    fetchStats(); // pobierz od razu po załadowaniu
+    fetchStats(); // fetch immediately on load
     const interval = setInterval(fetchStats, 1000); // 1000 = 1s
-    return () => clearInterval(interval); // wyczyść interwał przy odmontowaniu
+    return () => clearInterval(interval); // clear interval on unmount
   }, []);
 
   if (!stats) return <div>Loading stats...</div>;

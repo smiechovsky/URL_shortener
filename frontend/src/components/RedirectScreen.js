@@ -31,12 +31,12 @@ export default function RedirectScreen() {
         setScanStatus(res.data.virus_status);
         setStatus("ready");
         setRescanMessage(res.data.rescan_message || "");
-        // Nowa logika przekierowania
+        // New redirect logic
         if (res.data.virus_status === "safe") {
           if (res.data.redirect_type === "delayed") {
             startCountdown(res.data.original_url, res.data.analytics_level, res.data.delay_seconds);
           } else {
-            // immediate: przekieruj natychmiast
+            // immediate: redirect immediately
             if (!redirectedSent.current) {
               sendAnalytics(res.data.analytics_level, "redirected");
               redirectedSent.current = true;
@@ -51,12 +51,12 @@ export default function RedirectScreen() {
 
     return () => {
       if (eventSource) eventSource.close();
-      // czyść interwał jeśli był ustawiony
+      // clear interval if set
       clearInterval(window._redirectInterval);
     };
   }, [short]);
 
-  // Wywołaj analitykę natychmiast po załadowaniu linku (tylko raz)
+  // Trigger analytics right after loading the link (only once)
   useEffect(() => {
     if (status === "ready" && link && !visitedSent.current && countryName !== "Unknown") {
       sendAnalytics(link.analytics_level, "visited");
@@ -69,7 +69,7 @@ export default function RedirectScreen() {
       if (link.redirect_type === "delayed") {
         startCountdown(link.original_url, link.analytics_level, link.delay_seconds);
       } else {
-        // immediate: przekieruj natychmiast
+        // immediate: redirect immediately
         if (!redirectedSent.current) {
           sendAnalytics(link.analytics_level, "redirected");
           redirectedSent.current = true;
@@ -137,7 +137,7 @@ export default function RedirectScreen() {
     });
   };
 
-  // Obsługa kliknięcia "I accept the risk, go anyway"
+  // Handle "I accept the risk, go anyway" click
   const handleAcceptRisk = () => {
     if (!redirectedSent.current && link) {
       sendAnalytics(link.analytics_level, "accepted_risk");

@@ -10,7 +10,7 @@ export const checkVirusTotal = async (url, link_id = null) => {
   );
   const scanId = resp.data.data.id;
 
-  // Zapisz do bazy z scan_id
+  // Save to database with scan_id
   if (link_id) {
     await pool.query(
       "INSERT INTO virus_scans (link_id, status, scan_id) VALUES ($1, $2, $3)",

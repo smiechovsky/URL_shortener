@@ -40,7 +40,7 @@ router.get("/sse/:short", (req, res) => {
           res.write(`data: ${JSON.stringify({ type: 'status_update', status })}\n\n`);
           lastStatus = status;
         }
-        // Zakończ SSE jeśli status to safe lub blocked
+        // End SSE if status is safe or blocked
         if (status === 'safe' || status === 'blocked') {
           clearInterval(interval);
           res.end();
