@@ -7,6 +7,7 @@ export default function ShortenForm() {
   const [url, setUrl] = useState("");
   const [level, setLevel] = useState("minimal");
   const [result, setResult] = useState(null);
+  const [customCode, setCustomCode] = useState("");
   const [redirectType, setRedirectType] = useState("immediate"); // 'immediate' or 'delayed'
   const [delaySeconds, setDelaySeconds] = useState(3); // 3-20 seconds
 
@@ -19,6 +20,7 @@ export default function ShortenForm() {
         analytics_level: level,
         redirect_type: redirectType,
         delay_seconds: redirectType === "delayed" ? delaySeconds : null,
+        custom_code: customCode || undefined,
       });
       setResult(res.data);
     } catch (err) {
@@ -36,6 +38,13 @@ export default function ShortenForm() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           required
+          style={{ width: "100%", marginBottom: 8 }}
+        />
+        <input
+          type="text"
+          placeholder="Custom code (A-Z a-z 0-9)"
+          value={customCode}
+          onChange={e => setCustomCode(e.target.value)}
           style={{ width: "100%", marginBottom: 8 }}
         />
         <select value={level} onChange={e => setLevel(e.target.value)} style={{ width: "100%", marginBottom: 8 }}>

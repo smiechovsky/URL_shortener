@@ -1,15 +1,22 @@
 import { pool } from "../utils/db.js";
 import { checkVirusTotal } from "../middleware/virusTotal.js";
-import crypto from "crypto";
+import { generateId, isValidId } from "../utils/id.js";
 
 const generateCode = (len = 6) =>
   crypto.randomBytes(len).toString("base64url").slice(0, len);
 
 export const createLink = async (req, res, next) => {
-  const { original_url, analytics_level = "minimal", redirect_type = "immediate", delay_seconds = null } = req.body;
+  const { original_url, analytics_level = "minimal", redirect_type = "immediate", delay_seconds = null, custom_code } = req.body;
   const user_id = req.user?.id || null;
-  const short_code = generateCode(6);
-  const analytics_code = user_id ? null : generateCode(12);
+  let short_code = custom_code;
+  if (short_code) {
+    if (!isValidId(short_code)) return res.status(400).json({ error: "Invalid custom code" });
+    const exists = await pool.query("SELECT 1 FROM links WHERE short_code=$1", [short_code]);
+    if (exists.rows.length) return res.status(400).json({ error: "Code in use" });
+  } else {
+    short_code = generateId(6);
+  }
+  const analytics_code = user_id ? null : generateId(12);
   try {
     const sql = `INSERT INTO links (user_id, original_url, short_code, analytics_code, analytics_level, virus_status, redirect_type, delay_seconds)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
